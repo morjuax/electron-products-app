@@ -1,4 +1,4 @@
-const {app, BrowserWindow, Menu} = require('electron')
+const {app, BrowserWindow, Menu, ipcMain} = require('electron')
 const url = require('url');
 const path = require('path');
 if (process.env.NODE_ENV !== 'production') {
@@ -10,9 +10,16 @@ if (process.env.NODE_ENV !== 'production') {
 let mainWindow = null;
 let newProductWindow = null;
 const isMac = process.platform === 'darwin';
+
 app.on('ready', () => {
     mainWindow = new BrowserWindow({
-        title: 'Products App'
+        title: 'Products App',
+        width:720,
+        height: 600,
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+        }
     });
     mainWindow.loadURL(url.format({
         pathname: path.join(__dirname, 'views/index.html'),
@@ -33,8 +40,12 @@ const createNewProductWindow = () => {
         width: 400,
         height: 330,
         title: 'Add A New Product',
+        webPreferences: {
+            nodeIntegration: true,
+            contextIsolation: false,
+        }
     });
-    newProductWindow.setMenu(null);
+    // newProductWindow.setMenu(null);
 
     newProductWindow.loadURL(url.format({
         pathname: path.join(__dirname, 'views/new-product.html'),
@@ -45,6 +56,10 @@ const createNewProductWindow = () => {
         newProductWindow = null;
     });
 }
+
+ipcMain.on('product:new', (e, newProduct) => {
+    mainWindow.webContents.send('product:new', newProduct)
+})
 
 const templateMenu = [
     {
@@ -59,17 +74,39 @@ const templateMenu = [
             },
             {
                 label: 'Remove All Products',
-                click() {
-
-                }
+                click() {}
             },
             {
                 label: 'Exit',
-                accelerator: isMac ? 'command+q' : 'Ctrl+q',
+                accelerator: isMac ? 'command+q' : 'Ctrl+Q',
                 click() {
                     app.quit();
                 }
             }
         ]
     },
-]
+];
+
+if (isMac) {
+    templateMenu.unshift({
+        label: app.getName()
+    })
+}
+
+if (process.env.NODE_ENV !== 'production') {
+    templateMenu.push({
+        label: 'DevTools',
+        submenu: [
+            {
+                label: 'Show/Hide Dev Tools',
+                accelerator: 'Ctr+D',
+                click(item, focusedWindow) {
+                    focusedWindow.toggleDevTools();
+                }
+            },
+            {
+                role: 'reload'
+            }
+        ]
+    })
+}
